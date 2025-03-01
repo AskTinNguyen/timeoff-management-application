@@ -1,65 +1,77 @@
 'use strict';
 
-var models = require('../lib/model/db');
+const { DataTypes } = require('sequelize');
 
 module.exports = {
-  up: function (queryInterface, Sequelize) {
+  up: async (queryInterface, Sequelize) => {
+    const attributes = await queryInterface.describeTable('Departments');
 
-    queryInterface.describeTable('Departments').then(function(attributes){
+    if (attributes.hasOwnProperty('allowance')) {
+      return Promise.resolve();
+    }
 
-      if (attributes.hasOwnProperty('allowance')) {
-        return 1;
-      }
+    if (queryInterface.sequelize.getDialect() === 'sqlite') {
+      console.log('Going into SQLite case');
 
-      if ('sqlite' === queryInterface.sequelize.getDialect()) {
+      const departmentAttributes = {
+        id: {
+          type: DataTypes.INTEGER,
+          primaryKey: true,
+          autoIncrement: true
+        },
+        name: {
+          type: DataTypes.STRING,
+          allowNull: false
+        },
+        include_public_holidays: {
+          type: DataTypes.BOOLEAN,
+          defaultValue: true
+        },
+        allowance: {
+          type: DataTypes.INTEGER,
+          allowNull: false
+        },
+        company_id: {
+          type: DataTypes.INTEGER,
+          references: {
+            model: 'Companies',
+            key: 'id'
+          }
+        },
+        boss_id: {
+          type: DataTypes.INTEGER,
+          references: {
+            model: 'Users',
+            key: 'id'
+          }
+        },
+        created_at: {
+          type: DataTypes.DATE,
+          allowNull: false
+        },
+        updated_at: {
+          type: DataTypes.DATE,
+          allowNull: false
+        }
+      };
 
-        console.log('Going into SQLIite case');
-
-        return queryInterface
-          // Create Temp Departments based on current model definitiom
-          .createTable('Departments_backup', models.Department.attributes)
-
-          .then(function(){
-            return queryInterface.sequelize.query('PRAGMA foreign_keys=off;');
-          })
-
-          // Copy data form original Departments into new Temp one
-          .then(function(){
-            return queryInterface.sequelize.query(
-              'INSERT INTO `Departments_backup` (id, name, include_public_holidays, createdAt, updatedAt, companyId, bossId, allowance) SELECT id, name, include_public_holidays, createdAt, updatedAt, companyId, bossId, allowence FROM `'+ models.Department.tableName +'`');
-          })
-
-          .then(function(){
-            return queryInterface.dropTable( models.Department.tableName );
-          })
-
-          .then(function(){
-            return queryInterface.renameTable('Departments_backup', models.Department.tableName);
-          })
-
-          .then(function(){
-            return queryInterface.sequelize.query('PRAGMA foreign_keys=on;');
-          })
-
-          .then(function(){
-            queryInterface.addIndex(models.Department.tableName, ['companyId']);
-          })
-
-          .then(function(){
-            queryInterface.addIndex(models.Department.tableName, ['id']);
-          });
-
-      } else {
-
-        console.log('Generic option');
-
-        return queryInterface.renameColumn('Departments', 'allowence', 'allowance')
-          .then(function(d){ console.dir(d) });
-      }
-    });
+      await queryInterface.sequelize.query('PRAGMA foreign_keys=off;');
+      await queryInterface.createTable('Departments_backup', departmentAttributes);
+      await queryInterface.sequelize.query(
+        'INSERT INTO `Departments_backup` (id, name, include_public_holidays, created_at, updated_at, company_id, boss_id, allowance) SELECT id, name, include_public_holidays, created_at, updated_at, company_id, boss_id, allowence FROM `Departments`'
+      );
+      await queryInterface.dropTable('Departments');
+      await queryInterface.renameTable('Departments_backup', 'Departments');
+      await queryInterface.sequelize.query('PRAGMA foreign_keys=on;');
+      await queryInterface.addIndex('Departments', ['company_id']);
+      await queryInterface.addIndex('Departments', ['id']);
+    } else {
+      console.log('Generic option');
+      await queryInterface.renameColumn('Departments', 'allowence', 'allowance');
+    }
   },
 
-  down: function (queryInterface, Sequelize) {
+  down: async (queryInterface, Sequelize) => {
     return queryInterface.renameColumn('Departments', 'allowance', 'allowence');
   }
 };

@@ -1,26 +1,25 @@
-
 'use strict';
 
-const models = require('../lib/model/db');
-
 module.exports = {
-  up: (queryInterface, Sequelize) => {
+  async up(queryInterface, Sequelize) {
+    const attributes = await queryInterface.describeTable('Companies');
+    
+    if (attributes.hasOwnProperty('carry_over')) {
+      return;
+    }
 
-    queryInterface.describeTable('Companies').then((attributes) => {
-
-      if (attributes.hasOwnProperty('carry_over')) {
-        return 1;
+    return queryInterface.addColumn(
+      'Companies',
+      'carry_over',
+      {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
       }
-
-      return queryInterface.addColumn(
-        'Companies',
-        'carry_over',
-        models.Company.attributes.carry_over
-      );
-    });
+    );
   },
 
-  down: function (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     return queryInterface.removeColumn('Companies', 'carry_over');
   }
 };

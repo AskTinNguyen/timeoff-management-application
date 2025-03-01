@@ -1,27 +1,25 @@
-
 'use strict';
 
-var models = require('../lib/model/db');
-
 module.exports = {
-  up: function (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
+    const attributes = await queryInterface.describeTable('Companies');
+    
+    if (attributes.hasOwnProperty('mode')) {
+      return;
+    }
 
-    queryInterface.describeTable('Companies').then(function(attributes){
-
-      if (attributes.hasOwnProperty('mode')) {
-        return 1;
+    return queryInterface.addColumn(
+      'Companies',
+      'mode',
+      {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 1
       }
-
-      return queryInterface.addColumn(
-        'Companies',
-        'mode',
-        models.Company.attributes.mode
-      );
-    });
-
+    );
   },
 
-  down: function (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     return queryInterface.removeColumn('Companies', 'mode');
   }
 };

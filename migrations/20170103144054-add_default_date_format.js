@@ -2,11 +2,9 @@
 
 module.exports = {
   up: function (queryInterface, Sequelize) {
-
-    queryInterface.describeTable('Companies').then(function(attributes){
-
+    return queryInterface.describeTable('Companies').then(function(attributes){
       if (attributes.hasOwnProperty('date_format')) {
-        return 1;
+        return Promise.resolve();
       }
 
       return queryInterface.addColumn(

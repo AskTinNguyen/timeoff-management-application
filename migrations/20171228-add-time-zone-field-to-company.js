@@ -1,28 +1,25 @@
-
 'use strict';
 
-var models = require('../lib/model/db');
-
 module.exports = {
-  up: function (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
+    const attributes = await queryInterface.describeTable('Companies');
+    
+    if (attributes.hasOwnProperty('timezone')) {
+      return;
+    }
 
-    return queryInterface.describeTable('Companies')
-      .then(function(attributes){
-
-        if (attributes.hasOwnProperty('timezone')) {
-          return 1;
-        }
-
-        return queryInterface.addColumn(
-          'Companies',
-          'timezone',
-          models.Company.attributes.timezone
-        );
-      });
+    return queryInterface.addColumn(
+      'Companies',
+      'timezone',
+      {
+        type: Sequelize.STRING,
+        allowNull: false,
+        defaultValue: 'Europe/London'
+      }
+    );
   },
 
-  down: function (queryInterface, Sequelize) {
-    return queryInterface
-      .removeColumn('Companies', 'timezone');
+  async down(queryInterface, Sequelize) {
+    return queryInterface.removeColumn('Companies', 'timezone');
   }
 };

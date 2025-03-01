@@ -1,54 +1,106 @@
-
 'use strict';
 
-var models = require('../lib/model/db'),
-  Promise = require('bluebird');
-
 module.exports = {
-  up: function (queryInterface, Sequelize) {
+  up: async (queryInterface, Sequelize) => {
+    const attributes = await queryInterface.describeTable('Users');
 
-    return queryInterface
-      .describeTable('Users')
-      .then(attributes => {
+    if (!attributes.hasOwnProperty('adjustment')) {
+      return;
+    }
 
-        if ( ! attributes.hasOwnProperty('adjustment')) {
-          return Promise.resolve();
+    if (queryInterface.sequelize.getDialect() !== 'sqlite') {
+      // For non SQLite: it is easy
+      return queryInterface.removeColumn('Users', 'adjustment');
+    }
+
+    // For SQLite it is "fun"
+    const userAttributes = {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+      },
+      email: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true
+      },
+      password: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
+      name: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
+      lastname: {
+        type: Sequelize.STRING,
+        allowNull: true
+      },
+      activated: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
+      admin: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
+      start_date: {
+        type: Sequelize.DATE
+      },
+      end_date: {
+        type: Sequelize.DATE
+      },
+      created_at: {
+        type: Sequelize.DATE,
+        allowNull: false
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false
+      },
+      company_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'Companies',
+          key: 'id'
         }
-
-        if ('sqlite' !== queryInterface.sequelize.getDialect()) {
-          // For non SQLite: it is easy
-          return queryInterface.removeColumn(
-            models.User.tableName,
-            'adjustment'
-          );
+      },
+      department_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'Departments',
+          key: 'id'
         }
+      },
+      auto_approve: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      }
+    };
 
-        // For SQLite it is "fun"
-
-        return queryInterface
-          // Create Temp Users based on current model definitiom
-          .createTable('Users_backup', models.User.attributes)
-
-          .then(function(){
-            return queryInterface.sequelize.query('PRAGMA foreign_keys=off;');
-          })
-
-          // Copy data form original Users into new Temp one
-          .then(function(){
-            return queryInterface.sequelize.query(
-              'INSERT INTO `Users_backup` (`id`, `email`, `password`, `name`, `lastname`, `activated`, `admin`, `start_date`, `end_date`, `createdAt`, `updatedAt`, `companyId`, `DepartmentId`, `auto_approve`) SELECT `id`, `email`, `password`, `name`, `lastname`, `activated`, `admin`, `start_date`, `end_date`, `createdAt`, `updatedAt`, `companyId`, `DepartmentId`, `auto_approve` FROM `'+ models.User.tableName +'`');
-          })
-
-          .then(() => queryInterface.dropTable( models.User.tableName ))
-          .then(() => queryInterface.renameTable('Users_backup', models.User.tableName))
-          .then(() => queryInterface.sequelize.query('PRAGMA foreign_keys=on;'))
-          .then(() => queryInterface.addIndex(models.User.tableName, ['companyId']))
-
-      });
+    await queryInterface.sequelize.query('PRAGMA foreign_keys=off;');
+    await queryInterface.createTable('Users_backup', userAttributes);
+    await queryInterface.sequelize.query(`
+      INSERT INTO Users_backup (
+        id, email, password, name, lastname, activated, admin,
+        start_date, end_date, created_at, updated_at,
+        company_id, department_id, auto_approve
+      )
+      SELECT
+        id, email, password, name, lastname, activated, admin,
+        start_date, end_date, created_at, updated_at,
+        company_id, department_id, auto_approve
+      FROM Users
+    `);
+    await queryInterface.dropTable('Users');
+    await queryInterface.renameTable('Users_backup', 'Users');
+    await queryInterface.sequelize.query('PRAGMA foreign_keys=on;');
+    await queryInterface.addIndex('Users', ['company_id']);
   },
 
-  down: function (queryInterface, Sequelize) {
+  down: async (queryInterface, Sequelize) => {
     // No way back!
-    return Promise.resolve();
+    return;
   }
 };

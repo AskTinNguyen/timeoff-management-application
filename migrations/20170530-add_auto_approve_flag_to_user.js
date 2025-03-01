@@ -1,27 +1,25 @@
-
 'use strict';
 
-var models = require('../lib/model/db');
-
 module.exports = {
-  up: function (queryInterface, Sequelize) {
+  up: async (queryInterface, Sequelize) => {
+    const attributes = await queryInterface.describeTable('Users');
 
-    queryInterface.describeTable('Users').then(function(attributes){
+    if (attributes.hasOwnProperty('auto_approve')) {
+      return Promise.resolve();
+    }
 
-      if (attributes.hasOwnProperty('auto_approve')) {
-        return 1;
+    return queryInterface.addColumn(
+      'Users',
+      'auto_approve',
+      {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
       }
-
-      return queryInterface.addColumn(
-        'Users',
-        'auto_approve',
-        models.User.attributes.auto_approve
-      );
-    });
-
+    );
   },
 
-  down: function (queryInterface, Sequelize) {
+  down: async (queryInterface, Sequelize) => {
     return queryInterface.removeColumn('Users', 'auto_approve');
   }
 };

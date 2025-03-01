@@ -1,26 +1,25 @@
 'use strict';
 
-var models = require('../lib/model/db');
-
 module.exports = {
-  up: function (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
+    const attributes = await queryInterface.describeTable('LeaveTypes');
+    
+    if (attributes.hasOwnProperty('auto_approve')) {
+      return;
+    }
 
-    queryInterface.describeTable('LeaveTypes').then(function(attributes){
-
-      if (attributes.hasOwnProperty('auto_approve')) {
-        return 1;
+    return queryInterface.addColumn(
+      'LeaveTypes',
+      'auto_approve',
+      {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
       }
-
-      return queryInterface.addColumn(
-        'LeaveTypes',
-        'auto_approve',
-        models.LeaveType.attributes.auto_approve
-      );
-    });
-
+    );
   },
 
-  down: function (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     return queryInterface.removeColumn('LeaveTypes', 'auto_approve');
   }
 };
